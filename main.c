@@ -5,7 +5,7 @@
 #include <stdint.h>  /* for uint64  */
 #include <time.h>    /* for clock_gettime */
 #include <atomic>    /*used in other parts of the assignment */
-#define NUM_THREADS 4
+#define NUM_THREADS 1
 #define numPoints 100000000
 
 double step = 0.5/numPoints;
@@ -22,12 +22,12 @@ double f(double x) {
 //double pi = 0.0;
 
 //part c
-/*std::atomic<double> pi{0};
+std::atomic<double> pi{0};
 
 void add_to_pi(double bar) {
   auto current = pi.load();
   while (!pi.compare_exchange_weak(current, current + bar));
-}*/
+}
 
 //parts e/f
 double sum[NUM_THREADS];
@@ -43,16 +43,14 @@ void* calculatePi(void* thread_id){
     for (int i = 0; i < numPoints/NUM_THREADS; i++) {
         //temp_pi = temp_pi + step*f(x);  // Add to local sum
  	//pthread_mutex_lock(&mutex_lock);   
-        sum[tid] = sum[tid] +  step*f(x);  // Add to local sum
- 	//pthread_mutex_unlock(&mutex_lock);
+        //sum[tid] = sum[tid] +  step*f(x); 
+ 	//pi = pi + step*f(x);
+ 	add_to_pi(step*f(x));
+	//pthread_mutex_unlock(&mutex_lock);
  	x = x + step;  // next x
     }
 
-    //pthread_mutex_lock(&mutex_lock);
-        //pi += temp_pi;
-        //add_to_pi(temp_pi);
-        //sum[tid] = temp_pi;
-    //pthread_mutex_unlock(&mutex_lock);
+       // sum[tid] = temp_pi;
     //printf("thread %ld's contribution: %f\n", tid, temp_pi);
 
 }
@@ -83,11 +81,11 @@ int main(int argc, char *argv[]) {
     }
 
    //for part with array
-        double pi = 0.0d;
+  /*      double pi = 0.0d;
         for(int i = 0; i < NUM_THREADS; i++){
             pi += sum[i];
         }
-	
+*/	
 
   clock_gettime(CLOCK_MONOTONIC_RAW, &tock);
 
@@ -95,10 +93,10 @@ int main(int argc, char *argv[]) {
 
  printf("elapsed process CPU time = %llu nanoseconds\n", (long long unsigned int) execTime);
 
-        printf("pi = %.20f\n", pi);
+        //printf("pi = %.20f\n", pi);
         //part c
-        //auto current = pi.load();
-        //printf("%.20f\n", (double)current);
+        auto current = pi.load();
+        printf("%.20f\n", (double)current);
 
   return 0;
 }
