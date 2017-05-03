@@ -66,7 +66,8 @@ int main(int argc, char *argv[]) {
 	int rc;
 	long t;
 
-	clock_gettime(CLOCK_MONOTONIC_RAW, &tick);
+
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &tick);
 
 	for (t = 0; t < NUM_THREADS; t++) {
 		// printf("In main: creating thread %ld\n", t);
@@ -85,7 +86,7 @@ int main(int argc, char *argv[]) {
 //	for (int i = 0; i < NUM_THREADS; i++) pi += sum[i];
 
 
-	clock_gettime(CLOCK_MONOTONIC_RAW, &tock);
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &tock);
 
 	execTime = 1000000000 * (tock.tv_sec - tick.tv_sec) + tock.tv_nsec - tick.tv_nsec;
 
@@ -102,25 +103,25 @@ int main(int argc, char *argv[]) {
 	FILE *fp = fopen("results.out", "w");
 	Graph *G = read_dimacs(file);
 
-	// Normal Bellman-Ford
-	clock_gettime(CLOCK_MONOTONIC_RAW, &tick);
+
+	// NORMAL BELLMAN-FORD
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &tick);
 	int *norm = bellman_ford(G, 0);
-	clock_gettime(CLOCK_MONOTONIC_RAW, &tock);
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &tock);
 
 	unsigned long long int normal_time = 1000000000 * (tock.tv_sec - tick.tv_sec) +
 		tock.tv_nsec - tick.tv_nsec;
 
 	fprintf(fp, "Normal Bellman-Ford Results\nElapsed Time: %llu ns\n", normal_time);
 	for (int i = 0; i < G->V; i++)
-		if (G->length[i])
+//		if (G->length[i])
 			fprintf(fp, "%d %d\n", i+1, norm[i]);
-	delete []norm;
 
 
-	// Parallel Bellman-Ford
-	clock_gettime(CLOCK_MONOTONIC_RAW, &tick);
+	// PARALLEL BELLMAN-FORD
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &tick);
 	int *para = bf_parallel(G, 0, thread_n);
-	clock_gettime(CLOCK_MONOTONIC_RAW, &tock);
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &tock);
 
 	unsigned long long int parallel_time = 1000000000 * (tock.tv_sec - tick.tv_sec) +
 		tock.tv_nsec - tick.tv_nsec;
@@ -128,10 +129,22 @@ int main(int argc, char *argv[]) {
 	fprintf(fp, "\nParallel Bellman-Ford Results (%d-Threads)\nElapsed Time: %llu ns\n",
 			thread_n, parallel_time);
 	for (int i = 0; i < G->V; i++)
-		if (G->length[i])
+//		if (G->length[i])
 			fprintf(fp, "%d %d\n", i+1, para[i]);
 
+
+	// ACCURACY TEST
+	int j = 0;
+	for (int i = 0; i < G->V; i++) {
+		if (para[i] != norm[i] && ++j) {
+			printf("BROKEN AT i = %d\n", i+1);
+			break;
+		}
+	}
+	if (!j) printf("WORKS");
+
 	delete []para;
+	delete []norm;
 
 	delete G;
 

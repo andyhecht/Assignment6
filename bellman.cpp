@@ -6,7 +6,10 @@
 #include "bellman.h"
 
 pthread_barrier_t barrier;
+
 pthread_mutex_t relax_lock;
+
+int count = 0;
 
 Graph *read_dimacs(char* file) {
 	int V, E, u, v, w;
@@ -47,7 +50,7 @@ Graph *read_dimacs(char* file) {
 int *bellman_ford(Graph *G, int src) {
 	int V = G->V, E = G->E, *length = G->length, *dist = new int[V];
 	Edge **edge = G->edge;
-	bool conv = false;
+	bool converge = true;
 
 	for (int i = 0; i < V; dist[i++] = INT_MAX);
 	dist[src] = 0;
@@ -56,10 +59,16 @@ int *bellman_ford(Graph *G, int src) {
 		for (int j = 0; j < V; j++) {
 			for (int k = 0; k < length[j]; k++) {
 				int u = j, v = edge[j][k].v, w = edge[j][k].w;
-				if (dist[u] != INT_MAX && dist[v] > dist[u] + w)
+				if (dist[u] == INT_MAX) break;
+
+				if (dist[v] > dist[u] + w) {
 					dist[v] = dist[u] + w;
+					converge = false;
+				}
 			}
 		}
+		if (converge) break;
+		converge = true;
 	}
 
 	return dist;
@@ -110,34 +119,36 @@ int *bf_parallel(Graph *G, int src, int num_threads) {
 
 void *bf_routine(void *thread_data) {
 	Worker_Data *data = (Worker_Data *)thread_data;
+	int src = data->src, lo = data->lo, hi = data->hi, *dist = data->dist;
 
-	int *dist = data->dist;
-	int src = data->src, lo = data->lo, hi = data->hi;
 	Graph *G = data->G;
-
-	printf("lo: %d, hi: %d\n", lo, hi);
-
 	int V = G->V, E = G->E, *length = G->length;
+
 	Edge **edge = G->edge;
 
-	for (int i = 1; i < V; i++) {
-		for (int j = lo; j < hi + 1; j++) {
-			for (int k = 0; k < length[j]; j++) {
-				int u = j, v = G->edge[j][k].v, w = G->edge[j][k].w;
-				/*
-				int old_u = dist[u].load(std::memory_order_relaxed),
-					old_v = dist[v].load(std::memory_order_relaxed);
+	bool converge;
 
-				if (old_v != INT_MAX && old_v > old_u + w)
-					while (old_v > old_u + w && !dist[v].compare_exchange_weak(old_v, old_u + w));
-				*/
+	do {
+		converge = false;
+		pthread_barrier_wait(&barrier);
+		count = 0;
+		for (int j = lo; j < hi + 1; j++) {
+			for (int k = 0; k < length[j]; k++) {
+				int u = j, v = G->edge[j][k].v, w = G->edge[j][k].w;
+				if (dist[u] == INT_MAX) break;
+
 				pthread_mutex_lock(&relax_lock);
-				if (dist[v] != INT_MAX && dist[v] > dist[u] + w)
+				if (dist[v] > dist[u] + w) {
 					dist[v] = dist[u] + w;
+					converge = true;
+				}
 				pthread_mutex_unlock(&relax_lock);
 			}
 		}
+		count += converge;
 		pthread_barrier_wait(&barrier);
-	}
+	} while (count);
+
+	pthread_exit(NULL);
 }
 
