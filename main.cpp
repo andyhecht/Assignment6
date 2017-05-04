@@ -1,7 +1,7 @@
-#include <stdio.h>
-#include <math.h>
+#include <cstdio>
+#include <cmath>
 
-#include <time.h>
+#include <ctime>
 #include <pthread.h>
 
 #include <atomic>
@@ -11,8 +11,6 @@
 #define NUM_THREADS 1
 #define NUM_POINTS 100000000
 #define STEP (0.5 / NUM_POINTS)
-
-using namespace std;
 
 pthread_mutex_t mutex_lock;
 
@@ -24,7 +22,7 @@ double f(double x) {
 //double pi = 0.0;
 
 //part c
-atomic<double> pi {0};
+std::atomic<double> pi {0};
 
 void add_to_pi(double bar) {
 	auto current = pi.load();
@@ -37,7 +35,7 @@ double sum[NUM_THREADS];
 void *calculatePi(void *thread_id) {
 	long tid = (long)thread_id;
 
-	double temp_pi = 0.0;
+//	double temp_pi = 0.0;
 
 	double x = 0.0 + (tid * ((0.5)/NUM_THREADS));
 
@@ -53,7 +51,7 @@ void *calculatePi(void *thread_id) {
 
 	// sum[tid] = temp_pi;
 	// printf("thread %ld's contribution: %f\n", tid, temp_pi);
-
+	pthread_exit(NULL);
 }
 
 int main(int argc, char *argv[]) {
@@ -66,8 +64,7 @@ int main(int argc, char *argv[]) {
 	int rc;
 	long t;
 
-
-	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &tick);
+	clock_gettime(CLOCK_MONOTONIC_RAW, &tick);
 
 	for (t = 0; t < NUM_THREADS; t++) {
 		// printf("In main: creating thread %ld\n", t);
@@ -81,12 +78,14 @@ int main(int argc, char *argv[]) {
 	for(int i = 0; i < NUM_THREADS; i++)
 		pthread_join(threads[i], NULL);
 
+	pthread_mutex_destroy(&mutex_lock);
+
 //	for part with array
 //	double pi = 0.0d;
 //	for (int i = 0; i < NUM_THREADS; i++) pi += sum[i];
 
 
-	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &tock);
+	clock_gettime(CLOCK_MONOTONIC_RAW, &tock);
 
 	execTime = 1000000000 * (tock.tv_sec - tick.tv_sec) + tock.tv_nsec - tick.tv_nsec;
 
@@ -97,58 +96,18 @@ int main(int argc, char *argv[]) {
 	auto current = pi.load();
 	printf("%.20f\n", (double)current);
 
+
 //////////////////////////////////SSSP//////////////////////////////////
-	int thread_n = 8;
-	char *file = (char *)"rmat15.dimacs";
 	FILE *fp = fopen("results.out", "w");
-	Graph *G = read_dimacs(file);
 
-
-	// NORMAL BELLMAN-FORD
-	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &tick);
-	int *norm = bellman_ford(G, 0);
-	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &tock);
-
-	unsigned long long int normal_time = 1000000000 * (tock.tv_sec - tick.tv_sec) +
-		tock.tv_nsec - tick.tv_nsec;
-
-	fprintf(fp, "Normal Bellman-Ford Results\nElapsed Time: %llu ns\n", normal_time);
-	for (int i = 0; i < G->V; i++)
-//		if (G->length[i])
-			fprintf(fp, "%d %d\n", i+1, norm[i]);
-
-
-	// PARALLEL BELLMAN-FORD
-	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &tick);
-	int *para = bf_parallel(G, 0, thread_n);
-	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &tock);
-
-	unsigned long long int parallel_time = 1000000000 * (tock.tv_sec - tick.tv_sec) +
-		tock.tv_nsec - tick.tv_nsec;
-
-	fprintf(fp, "\nParallel Bellman-Ford Results (%d-Threads)\nElapsed Time: %llu ns\n",
-			thread_n, parallel_time);
-	for (int i = 0; i < G->V; i++)
-//		if (G->length[i])
-			fprintf(fp, "%d %d\n", i+1, para[i]);
-
-
-	// ACCURACY TEST
-	int j = 0;
-	for (int i = 0; i < G->V; i++) {
-		if (para[i] != norm[i] && ++j) {
-			printf("BROKEN AT i = %d\n", i+1);
-			break;
-		}
-	}
-	if (!j) printf("WORKS");
-
-	delete []para;
-	delete []norm;
-
-	delete G;
+	sssp((char *)"rmat15.dimacs", 0, fp);
+	sssp((char *)"rmat23.dimacs", 0, fp);
+	sssp((char *)"road-NY.dimacs", 140960, fp);
+	sssp((char *)"road-FLA.dimacs", 316606, fp);
 
 	fclose(fp);
 
 	return 0;
 }
+
+

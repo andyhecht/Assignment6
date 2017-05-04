@@ -7,7 +7,7 @@
 using namespace std;
 
 int *dijkstra(int src, vector<vector<pair<int, int> > >& u) {
-	int n = u.size(), vis[n], *dist = new int[n];
+	int n = u.size(), vis[n], *dist = new int[n], node_relax = 0;
 
 	for (int i = 0; i < n; i++) {
 		dist[i] = INT_MAX;
@@ -28,8 +28,8 @@ int *dijkstra(int src, vector<vector<pair<int, int> > >& u) {
 
 		if (vis[cv]) continue;
 		vis[cv] = 1;
-
-		for (int v = 0; v < u[cv].size(); v++) {
+		node_relax++;
+		for (size_t v = 0; v < u[cv].size(); v++) {
 			int nv = u[cv][v].first;
 			int nw = u[cv][v].second + cw;
 			if (!vis[nv] && nw < dist[nv]) {
@@ -38,6 +38,8 @@ int *dijkstra(int src, vector<vector<pair<int, int> > >& u) {
 			}
 		}
 	}
+
+	printf("Node Relaxations: %d\n", node_relax);
 
 	return dist;
 }
@@ -52,15 +54,22 @@ int main()
 
 	fscanf(fp, "p sp %d %d ", &n, &m);
 	vector<vector<pair<int, int> > > u(n);
-
+	bool *foo = new bool[n]();
+	int count = 0;
 	for (int i = 0; i < m; i++) {
 		fscanf(fp, "a %d %d %d ", &a, &b, &w);
 		if (a == b) continue;
 		u[a-1].push_back(make_pair(b-1, w));
+		foo[a-1]=true;
+		foo[b-1]=true;
 	}
+	for (int i = 0; i < n; i++)
+		if (foo[i]) count++;
+	printf("count: %d\n", count);
+	delete []foo;
 
 	fclose(fp);
-	FILE *fi = fopen("results.out", "w");
+	FILE *fi = fopen("results1.out", "w");
 
 	clock_gettime(CLOCK_MONOTONIC_RAW, &tick);
 	int *res = dijkstra(0, u);

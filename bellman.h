@@ -1,7 +1,7 @@
 #ifndef BELLMAN_H
 #define BELLMAN_H
 
-using namespace std;
+#include <cstdio>
 
 struct Edge {
 	int v, w;
@@ -20,17 +20,21 @@ struct Graph {
 };
 
 struct Worker_Data {
-	int src, lo, hi;
+	int src, lo, hi, tid;
 	int *dist;
 	Graph *G;
 };
 
 Graph *read_dimacs(char *);
 
-int *bellman_ford(Graph *, int);
+void assign_nodes(Worker_Data *);
 
-int *bf_parallel(Graph *, int, int);
+int *bf_serial(Graph *, int);
+
+int *bf_parallel(Graph *, int, Worker_Data *);
 
 void *bf_routine(void *);
+
+void sssp(char *, int, FILE *);
 
 #endif
